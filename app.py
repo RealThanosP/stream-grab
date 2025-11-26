@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import subprocess
 import threading
 import shutil
+import os
 
 APP_NAME = "StreamGrab"
 
@@ -28,11 +29,29 @@ class AudioTab(ttk.Frame):
 
         # --- URL Section ---
         url_frame = ttk.Frame(main_frame)
-        url_frame.pack(fill="x", pady=(0, 20))
+        url_frame.pack(fill="x", pady=(0, 10))
         
         ttk.Label(url_frame, text="Video URL:").pack(anchor="w")
         self.url_entry = ttk.Entry(url_frame, font=('Helvetica', 11))
         self.url_entry.pack(fill="x", pady=5, ipady=3)
+
+        # --- Path Section ---
+        path_frame = ttk.Frame(main_frame)
+        path_frame.pack(fill="x", pady=(0, 20))
+        ttk.Label(path_frame, text="Download Folder:").pack(anchor="w")
+        
+        path_inner_frame = ttk.Frame(path_frame)
+        path_inner_frame.pack(fill="x", pady=5)
+
+        # Default to user's Downloads directory
+        default_path = os.path.join(os.path.expanduser("~"), "Downloads")
+        self.path_var = tk.StringVar(value=default_path)
+        
+        self.path_entry = ttk.Entry(path_inner_frame, textvariable=self.path_var, font=('Helvetica', 10))
+        self.path_entry.pack(side="left", fill="x", expand=True, ipady=3)
+        
+        self.browse_btn = ttk.Button(path_inner_frame, text="Browse...", command=self.browse_folder)
+        self.browse_btn.pack(side="right", padx=(5, 0))
 
         # --- Audio Options ---
         options_frame = ttk.LabelFrame(main_frame, text="Audio Options", padding="10")
@@ -65,6 +84,11 @@ class AudioTab(ttk.Frame):
         self.status_text = tk.Text(main_frame, height=8, width=50, font=("Consolas", 9), state="disabled", bg="#f0f0f0")
         self.status_text.pack(fill="both", expand=True)
 
+    def browse_folder(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected:
+            self.path_var.set(folder_selected)
+
     def log(self, message):
         self.after(0, self._log_internal, message)
 
@@ -78,6 +102,8 @@ class AudioTab(ttk.Frame):
         state = "normal" if enable else "disabled"
         self.download_btn.config(state=state)
         self.url_entry.config(state=state)
+        self.browse_btn.config(state=state)
+        self.path_entry.config(state=state)
 
     def start_download_thread(self):
         url = self.url_entry.get().strip()
@@ -96,6 +122,11 @@ class AudioTab(ttk.Frame):
         cmd.extend(["--audio-format", self.format_var.get()])
         cmd.extend(["--audio-quality", self.quality_var.get()])
         
+        # Add Path
+        download_path = self.path_var.get()
+        if download_path:
+            cmd.extend(["-P", download_path])
+
         if self.meta_var.get():
             cmd.append("--add-metadata")
         if self.thumb_var.get():
@@ -138,12 +169,32 @@ class VideoTab(ttk.Frame):
         header = ttk.Label(main_frame, text="Video Downloader", style='Header.TLabel')
         header.pack(pady=(0, 20))
 
+        # --- URL Section ---
         url_frame = ttk.Frame(main_frame)
-        url_frame.pack(fill="x", pady=(0, 20))
+        url_frame.pack(fill="x", pady=(0, 10))
         ttk.Label(url_frame, text="Video URL:").pack(anchor="w")
         self.url_entry = ttk.Entry(url_frame, font=('Helvetica', 11))
         self.url_entry.pack(fill="x", pady=5, ipady=3)
 
+        # --- Path Section ---
+        path_frame = ttk.Frame(main_frame)
+        path_frame.pack(fill="x", pady=(0, 20))
+        ttk.Label(path_frame, text="Download Folder:").pack(anchor="w")
+        
+        path_inner_frame = ttk.Frame(path_frame)
+        path_inner_frame.pack(fill="x", pady=5)
+
+        # Default to user's Downloads directory
+        default_path = os.path.join(os.path.expanduser("~"), "Downloads")
+        self.path_var = tk.StringVar(value=default_path)
+        
+        self.path_entry = ttk.Entry(path_inner_frame, textvariable=self.path_var, font=('Helvetica', 10))
+        self.path_entry.pack(side="left", fill="x", expand=True, ipady=3)
+        
+        self.browse_btn = ttk.Button(path_inner_frame, text="Browse...", command=self.browse_folder)
+        self.browse_btn.pack(side="right", padx=(5, 0))
+
+        # --- Video Options ---
         options_frame = ttk.LabelFrame(main_frame, text="Video Options", padding="10")
         options_frame.pack(fill="x", pady=(0, 20))
 
@@ -174,6 +225,11 @@ class VideoTab(ttk.Frame):
         self.status_text = tk.Text(main_frame, height=8, width=50, font=("Consolas", 9), state="disabled", bg="#f0f0f0")
         self.status_text.pack(fill="both", expand=True)
 
+    def browse_folder(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected:
+            self.path_var.set(folder_selected)
+
     def log(self, message):
         self.after(0, self._log_internal, message)
 
@@ -187,6 +243,8 @@ class VideoTab(ttk.Frame):
         state = "normal" if enable else "disabled"
         self.download_btn.config(state=state)
         self.url_entry.config(state=state)
+        self.browse_btn.config(state=state)
+        self.path_entry.config(state=state)
 
     def start_download_thread(self):
         url = self.url_entry.get().strip()
@@ -203,6 +261,11 @@ class VideoTab(ttk.Frame):
     def run_download(self, url):
         cmd = ["yt-dlp"]
         
+        # Add Path
+        download_path = self.path_var.get()
+        if download_path:
+            cmd.extend(["-P", download_path])
+
         # Resolution
         res_selection = self.res_var.get()
         if res_selection != "Best":
@@ -250,7 +313,7 @@ class MainApp:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_NAME)
-        self.root.geometry("650x550")
+        self.root.geometry("650x650") # Increased height for path selection
         
         # Dependency Checks
         if not shutil.which("yt-dlp"):
